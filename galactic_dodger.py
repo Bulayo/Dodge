@@ -3,12 +3,17 @@ from random import randrange
 
 
 def draw_img():
+    if restart:
+        WIN.blit(game_over_surf, game_over_rect)
+        WIN.blit(restart_button_surf, restart_button_rect)
+
     if start_game is False:
+        WIN.blit(title_surf, title_rect)
         WIN.blit(highscore_surf, highscore_rect)
         WIN.blit(play_button_surf, play_button_rect)
         WIN.blit(exit_button_surf, exit_button_rect)
 
-    else:
+    elif restart is False:
         WIN.blit(score_surf, score_rect)
         WIN.blit(player_surf, player_rect)
 
@@ -22,12 +27,18 @@ def draw_img():
 
 
 def enemy_movement():
-    if start_game:
-        enemy_speed = 6
+    global restart, enemy_speed
+
+    if start_game and restart is False:
+        if current_score % 1500 == 0:
+            enemy_speed += 1
+            print(f"Enemy Speed Increased: {enemy_speed}")
+
         for j in range(NUM_OF_EMEMIES):
             enemy_1_rect[j].y += enemy_speed
             enemy_2_rect[j].y += enemy_speed
             enemy_3_rect[j].y += enemy_speed
+
             if enemy_1_rect[j].top > HEIGHT:
                 enemy_1_rect[j].y = randrange(-4000, 0)
 
@@ -49,7 +60,7 @@ def enemy_movement():
                     int(enemy_1_rect[j].y - player_rect.y),
                 ),
             ):
-                pass
+                restart = True
 
             if player_mask.overlap(
                 enemy_2_mask,
@@ -58,7 +69,7 @@ def enemy_movement():
                     int(enemy_2_rect[j].y - player_rect.y),
                 ),
             ):
-                pass
+                restart = True
 
             if player_mask.overlap(
                 enemy_3_mask,
@@ -67,24 +78,25 @@ def enemy_movement():
                     int(enemy_3_rect[j].y - player_rect.y),
                 ),
             ):
-                pass
+                restart = True
 
 
 def player_controls():
-    keys = pygame.key.get_pressed()
-    player_speed = 5
+    if start_game and restart is False:
+        keys = pygame.key.get_pressed()
+        player_speed = 5
 
-    if keys[pygame.K_a] or keys[pygame.K_LEFT]:
-        player_rect.x -= player_speed
+        if keys[pygame.K_a] or keys[pygame.K_LEFT]:
+            player_rect.x -= player_speed
 
-    if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
-        player_rect.x += player_speed
+        if keys[pygame.K_d] or keys[pygame.K_RIGHT]:
+            player_rect.x += player_speed
 
-    if player_rect.left <= 0:
-        player_rect.left = 0
+        if player_rect.left <= 0:
+            player_rect.left = 0
 
-    elif player_rect.right >= WIDTH:
-        player_rect.right = WIDTH
+        elif player_rect.right >= WIDTH:
+            player_rect.right = WIDTH
 
 
 def shoot_bullet():
@@ -93,24 +105,29 @@ def shoot_bullet():
     keys = pygame.key.get_pressed()
     mouse = pygame.mouse.get_pressed()
 
-    if keys[pygame.K_z] and bullet_cooldown == 0:
-        bullet_rect = pygame.Rect(player_rect.centerx - 5, player_rect.top, 10, 20)
-        bullets.append(bullet_rect)
-        bullet_cooldown = 20
+    if start_game and restart is False:
+        if keys[pygame.K_z] and bullet_cooldown == 0:
+            bullet_rect = pygame.Rect(player_rect.centerx - 5, player_rect.top, 10, 20)
+            bullets.append(bullet_rect)
+            bullet_cooldown = 20
+            laser_effect.play()
+            laser_effect.set_volume(0.1)
 
-    if mouse[0] and bullet_cooldown == 0:
-        bullet_rect = pygame.Rect(player_rect.centerx - 5, player_rect.top, 10, 20)
-        bullets.append(bullet_rect)
-        bullet_cooldown = 20
+        if mouse[0] and bullet_cooldown == 0:
+            bullet_rect = pygame.Rect(player_rect.centerx - 5, player_rect.top, 10, 20)
+            bullets.append(bullet_rect)
+            bullet_cooldown = 20
+            laser_effect.play()
+            laser_effect.set_volume(0.1)
 
-    for bullet in bullets:
-        bullet.y -= 8
+        for bullet in bullets:
+            bullet.y -= 8
 
-        if bullet.y < 0:
-            bullets.remove(bullet)
+            if bullet.y < 0:
+                bullets.remove(bullet)
 
-    if bullet_cooldown > 0:
-        bullet_cooldown -= 1
+        if bullet_cooldown > 0:
+            bullet_cooldown -= 1
 
 
 def bullet_collision():
@@ -181,7 +198,7 @@ def bullet_collision():
 def score():
     global current_score, score_surf, score_rect, highscore_surf, highscore_rect
 
-    if start_game:
+    if start_game and restart is False:
         current_score += 1
         score_surf = FONT.render(f"{current_score}", False, "black")
         score_rect = score_surf.get_rect(center=(200, 20))
@@ -198,10 +215,9 @@ def high_score():
         file.close()
 
 
-# ! Implement restarting game logic
 def restart_game():
     global start_game, current_score, player_rect, bullets, bullet_cooldown
-    global enemy_1_rect, enemy_2_rect, enemy_3_rect, enemy_1_health, enemy_2_health, enemy_3_health
+    global enemy_1_rect, enemy_2_rect, enemy_3_rect, enemy_1_health, enemy_2_health, enemy_3_health, enemy_speed
 
     start_game = False
     current_score = 0
@@ -219,37 +235,58 @@ def restart_game():
     enemy_1_health = 3
     enemy_2_health = 2
     enemy_3_health = 1
+    enemy_speed = 6
 
 
 pygame.init()
 
-file = open("highscore.txt", "r")
-highscore = int(file.read())
-file.close()
+try:
+    file = open("highscore.txt", "r")
+    highscore = int(file.read())
+    file.close()
+
+except:
+    highscore = 0
 
 WIDTH, HEIGHT = 400, 600
 WIN = pygame.display.set_mode((WIDTH, HEIGHT))
-pygame.display.set_caption("Dodge")
+pygame.display.set_caption("Galactic Dodger")
 clock = pygame.time.Clock()
 FPS = 60
 FONT = pygame.font.Font("assets/joystix_monospace.otf", 20)
 
+laser_effect = pygame.mixer.Sound("assets/laser.mp3")
+song = pygame.mixer.Sound("assets/song.mp3")
+song.play(loops=10)
+song.set_volume(0.4)
+
 start_game = False
+restart = False
 current_score = 0
 
+title_surf = pygame.image.load("assets/title.png").convert_alpha()
+title_rect = title_surf.get_rect(center=(WIDTH / 2, HEIGHT / 2 - 150))
+
 play_button_surf = pygame.image.load("assets/play_button.png").convert_alpha()
-play_button_rect = play_button_surf.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+play_button_rect = play_button_surf.get_rect(center=(WIDTH / 2, HEIGHT / 2))
 
 exit_button_surf = pygame.image.load("assets/exit_button.png").convert_alpha()
-exit_button_rect = exit_button_surf.get_rect(center=(WIDTH // 2, HEIGHT // 2 + 100))
+exit_button_rect = exit_button_surf.get_rect(center=(WIDTH / 2, HEIGHT / 2 + 100))
+
+game_over_surf = pygame.image.load("assets/game_over.png").convert_alpha()
+game_over_rect = game_over_surf.get_rect(center=(200, 200))
+
+restart_button_surf = pygame.image.load("assets/restart_button.png").convert_alpha()
+restart_button_rect = restart_button_surf.get_rect(center=(WIDTH / 2, HEIGHT / 2 + 50))
 
 player_surf = pygame.image.load("assets/ship_1.png").convert_alpha()
 player_rect = player_surf.get_rect(center=(200, 575))
 
 bullets = []
 bullet_cooldown = 0
+enemy_speed = 6
 
-NUM_OF_EMEMIES = 5
+NUM_OF_EMEMIES = 10
 enemy_1 = []
 enemy_1_rect = []
 
@@ -295,6 +332,11 @@ while True:
 
             elif exit_button_rect.collidepoint(mouse_pos) and start_game is False:
                 pygame.quit()
+
+            elif restart_button_rect.collidepoint(mouse_pos) and restart:
+                high_score()
+                restart = False
+                restart_game()
 
     score()
     enemy_movement()
