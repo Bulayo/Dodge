@@ -216,8 +216,16 @@ def high_score():
 
 
 def restart_game():
-    global start_game, current_score, player_rect, bullets, bullet_cooldown
+    global start_game, current_score, player_rect, bullets, bullet_cooldown, highscore
     global enemy_1_rect, enemy_2_rect, enemy_3_rect, enemy_1_health, enemy_2_health, enemy_3_health, enemy_speed
+
+    try:
+        file = open("highscore.txt", "r")
+        highscore = int(file.read())
+        file.close()
+
+    except:
+        highscore = 0
 
     start_game = False
     current_score = 0
